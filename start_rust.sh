@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RUST_DIR=${RUST_DIR:-$RUST_DIR}
+RUST_DIR=${RUST_DIR:-/steamcmd/rust}
 
 # Define the exit handler
 exit_handler() {
