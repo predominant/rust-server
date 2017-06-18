@@ -16,19 +16,9 @@ RUN apt-get update && \
 RUN mkdir -p /steamcmd/rust
 VOLUME ["/steamcmd/rust"]
 
-# Setup proper shutdown support
-ADD shutdown_app/ /shutdown_app/
-WORKDIR /shutdown_app
-RUN npm install
-
-# Setup restart support (for update automation)
-ADD restart_app/ /restart_app/
-WORKDIR /restart_app
-RUN npm install
-
-# Setup scheduling support
-ADD scheduler_app/ /scheduler_app/
-WORKDIR /scheduler_app
+# Setup Node scripts and install dependencies
+ADD rust_docker_control/ /rust_docker_control/
+WORKDIR /rust_docker_control
 RUN npm install
 
 # Add the steamcmd installation script

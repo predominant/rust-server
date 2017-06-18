@@ -182,7 +182,8 @@ fi
 
 # Start cron
 echo "Starting scheduled task manager.."
-node /scheduler_app/app.js &
+cd /rust_docker_control
+npm scheduler &
 
 # Set the working directory
 cd $RUST_DIR
