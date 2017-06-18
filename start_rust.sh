@@ -190,7 +190,7 @@ cd $RUST_DIR
 
 # Run the server
 echo "Starting Rust.."
-RUST_FULL_CMD=$(echo -e '$RUST_DIR/RustDedicated $RUST_STARTUP_COMMAND +server.identity "$RUST_SERVER_IDENTITY" +server.seed "$RUST_SERVER_SEED"  +server.hostname "$RUST_SERVER_NAME" +server.url "$RUST_SERVER_URL" +server.headerimage "$RUST_SERVER_BANNER_URL" +server.description "$RUST_SERVER_DESCRIPTION" +server.worldsize "$RUST_SERVER_WORLDSIZE" +server.maxplayers "$RUST_SERVER_MAXPLAYERS" +server.saveinterval "$RUST_SERVER_SAVE_INTERVAL" 2>&1')
+RUST_FULL_CMD="$RUST_DIR/RustDedicated $RUST_STARTUP_COMMAND +server.identity \"$RUST_SERVER_IDENTITY\" +server.seed \"$RUST_SERVER_SEED\" +server.hostname \"$RUST_SERVER_NAME\" +server.url \"$RUST_SERVER_URL\" +server.headerimage \"$RUST_SERVER_BANNER_URL\" +server.description \"$RUST_SERVER_DESCRIPTION\" +server.worldsize \"$RUST_SERVER_WORLDSIZE\" +server.maxplayers \"$RUST_SERVER_MAXPLAYERS\" +server.saveinterval \"$RUST_SERVER_SAVE_INTERVAL\" 2>&1"
 if [ "$LOGROTATE_ENABLED" = "1" ]; then
 	unbuffer $RUST_FULL_CMD | grep --line-buffered -Ev '^\s*$|Filename' | tee $RUST_SERVER_LOG_FILE &
 else
