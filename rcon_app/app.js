@@ -23,56 +23,38 @@ var serverPassword = process.env.RUST_RCON_PASSWORD;
 var messageSent = false;
 var WebSocket = require('ws');
 var ws = new WebSocket("ws://" + serverHostname + ":" + serverPort + "/" + serverPassword);
-ws.on('open', function open()
-{
-	setTimeout(function()
-	{
+var rcon = require('../rcon');
+
+ws.on('open', function open() {
+	setTimeout(function() {
 		messageSent = true;
-		ws.send(createPacket(argumentString));
-		setTimeout(function()
-		{
+		ws.send(rcon.createPacket(argumentString));
+		setTimeout(function() {
 			ws.close(1000);
-			setTimeout(function()
-			{
+			setTimeout(function() {
 				//console.log("Command relayed");
 				process.exit();
 			});
 		}, 1000);
 	}, 250);
 });
-ws.on('message', function(data, flags)
-{
+
+ws.on('message', function(data, flags) {
 	if (!messageSent) return;
-	try
-	{
+	try {
 		var json = JSON.parse(data);
-		if (json !== undefined)
-		{
-			if (json.Message !== undefined && json.Message.length > 0)
-			{
+		if (json !== undefined) {
+			if (json.Message !== undefined && json.Message.length > 0) {
 				console.log(json.Message);
 			}
 		}
 		else console.log("Error: Invalid JSON received");
-	}
-	catch(e)
-	{
+	} catch(e) {
 		if (e) console.log(e);
 	}
 });
-ws.on('error', function(e)
-{
+
+ws.on('error', function(e) {
 	console.log(e);
 	process.exit();
 });
-
-function createPacket(command)
-{
-	var packet =
-	{
-		Identifier: -1,
-		Message: command,
-		Name: "WebRcon"
-	};
-	return JSON.stringify(packet);
-}
