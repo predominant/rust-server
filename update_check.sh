@@ -17,11 +17,10 @@ trap 'rm -rf /tmp/update_check.lock' EXIT  # remove the lockdir on exit
 #fi
 
 # Check if we are auto-updating or not
-if [ "$RUST_UPDATE_CHECKING" = "1" ]; then
-	echo "Checking Steam for updates.."
-else
+if [ "$RUST_UPDATE_CHECKING" != "1" ]; then
 	exit
 fi
+echo "Checking Steam for updates.."
 
 # Get the old build id (default to 0)
 OLD_BUILDID=0

@@ -1,37 +1,41 @@
 #!/usr/bin/env bash
 
+RUST_DIR=${RUST_DIR:-$RUST_DIR}
+
 # Define the exit handler
-exit_handler()
-{
+exit_handler() {
 	echo "Shutdown signal received"
 
 	# Only do backups if we're using the seed override
-	if [ -f "/steamcmd/rust/seed_override" ]; then
+	if [ -f "$RUST_DIR/seed_override" ]; then
 		# Create the backup directory if it doesn't exist
-		if [ ! -d "/steamcmd/rust/bak" ]; then
-			mkdir -p /steamcmd/rust/bak
+		if [ ! -d "$RUST_DIR/bak" ]; then
+			mkdir -p $RUST_DIR/bak
 		fi
-		if [ -f "/steamcmd/rust/server/$RUST_SERVER_IDENTITY/UserPersistence.db" ]; then
+		if [ -f "$RUST_DIR/server/$RUST_SERVER_IDENTITY/UserPersistence.db" ]; then
 			# Backup all the current unlocked blueprint data
-			cp -fr "/steamcmd/rust/server/$RUST_SERVER_IDENTITY/UserPersistence*.db" "/steamcmd/rust/bak/"
+			cp -fr "$RUST_DIR/server/$RUST_SERVER_IDENTITY/UserPersistence*.db" "$RUST_DIR/bak/"
 		fi
 
-		if [ -f "/steamcmd/rust/server/$RUST_SERVER_IDENTITY/xp.db" ]; then
+		if [ -f "$RUST_DIR/server/$RUST_SERVER_IDENTITY/xp.db" ]; then
 			# Backup all the current XP data
-			cp -fr "/steamcmd/rust/server/$RUST_SERVER_IDENTITY/xp*.db" "/steamcmd/rust/bak/"
+			cp -fr "$RUST_DIR/server/$RUST_SERVER_IDENTITY/xp*.db" "$RUST_DIR/bak/"
 		fi
 	fi
 	
-	# Execute the RCON shutdown command
-	node /shutdown_app/app.js
-	sleep 5
-
-	pkill -f nginx
-
-	#kill -TERM "$child"
-
 	echo "Exiting.."
 	exit
+}
+
+# Install Rust from install.txt
+rust_install() {
+	echo "Installing Rust.. (this might take a while, be patient)"
+	STEAMCMD_OUTPUT=$(bash /steamcmd/steamcmd.sh +runscript /install.txt | tee /dev/stdout)
+	STEAMCMD_ERROR=$(echo $STEAMCMD_OUTPUT | grep -q 'Error')
+	if [ ! -z "$STEAMCMD_ERROR" ]; then
+		echo "Exiting, steamcmd install or update failed: $STEAMCMD_ERROR"
+		exit 1
+	fi
 }
 
 # Trap specific signals and forward to the exit handler
@@ -41,9 +45,9 @@ trap 'exit_handler' SIGHUP SIGINT SIGQUIT SIGTERM
 rm -fr /tmp/*.lock
 
 # Create the necessary folder structure
-if [ ! -d "/steamcmd/rust" ]; then
+if [ ! -d "$RUST_DIR" ]; then
 	echo "Creating folder structure.."
-	mkdir -p /steamcmd/rust
+	mkdir -p $RUST_DIR
 fi
 
 # Install/update steamcmd
@@ -61,33 +65,19 @@ fi
 # Disable auto-update if start mode is 2
 if [ "$RUST_START_MODE" = "2" ]; then
 	# Check that Rust exists in the first place
-	if [ ! -f "/steamcmd/rust/RustDedicated" ]; then
-		# Install Rust from install.txt
-		echo "Installing Rust.. (this might take a while, be patient)"
-		STEAMCMD_OUTPUT=$(bash /steamcmd/steamcmd.sh +runscript /install.txt | tee /dev/stdout)
-		STEAMCMD_ERROR=$(echo $STEAMCMD_OUTPUT | grep -q 'Error')
-		if [ ! -z "$STEAMCMD_ERROR" ]; then
-			echo "Exiting, steamcmd install or update failed: $STEAMCMD_ERROR"
-			exit
-		fi
+	if [ ! -f "$RUST_DIR/RustDedicated" ]; then
+		rust_install
 	else
 		echo "Rust seems to be installed, skipping automatic update.."
 	fi
 else
-	# Install/update Rust from install.txt
-	echo "Installing/updating Rust.. (this might take a while, be patient)"
-	STEAMCMD_OUTPUT=$(bash /steamcmd/steamcmd.sh +runscript /install.txt | tee /dev/stdout)
-	STEAMCMD_ERROR=$(echo $STEAMCMD_OUTPUT | grep -q 'Error')
-	if [ ! -z "$STEAMCMD_ERROR" ]; then
-		echo "Exiting, steamcmd install or update failed: $STEAMCMD_ERROR"
-		exit
-	fi
+	rust_install
 
 	# Run the update check if it's not been run before
-	if [ ! -f "/steamcmd/rust/build.id" ]; then
+	if [ ! -f "$RUST_DIR/build.id" ]; then
 		./update_check.sh
 	else
-		OLD_BUILDID="$(cat /steamcmd/rust/build.id)"
+		OLD_BUILDID="$(cat $RUST_DIR/build.id)"
 		STRING_SIZE=${#OLD_BUILDID}
 		if [ "$STRING_SIZE" -lt "6" ]; then
 			./update_check.sh
@@ -96,13 +86,13 @@ else
 fi
 
 # Rust includes a 64-bit version of steamclient.so, so we need to tell the OS where it exists
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/steamcmd/rust/RustDedicated_Data/Plugins/x86_64
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RUST_DIR/RustDedicated_Data/Plugins/x86_64
 
 # Check if Oxide is enabled
 if [ "$RUST_OXIDE_ENABLED" = "1" ]; then
 	# Next check if Oxide doesn't' exist, or if we want to always update it
 	INSTALL_OXIDE="0"
-	if [ ! -f "/steamcmd/rust/CSharpCompiler" ]; then
+	if [ ! -f "$RUST_DIR/CSharpCompiler" ]; then
 		INSTALL_OXIDE="1"
 	fi
 	if [ "$RUST_OXIDE_UPDATE_ON_BOOT" = "1" ]; then
@@ -112,9 +102,9 @@ if [ "$RUST_OXIDE_ENABLED" = "1" ]; then
 	# If necessary, download and install latest Oxide
 	if [ "$INSTALL_OXIDE" = "1" ]; then
 		echo "Downloading and installing latest Oxide.."
-		curl -sL https://dl.bintray.com/oxidemod/builds/Oxide-Rust.zip | bsdtar -xvf- -C /steamcmd/rust/
-		chmod 755 /steamcmd/rust/CSharpCompiler*
-		chown -R root:root /steamcmd/rust
+		curl -sL https://dl.bintray.com/oxidemod/builds/Oxide-Rust.zip | bsdtar -xvf- -C $RUST_DIR/
+		chmod 755 $RUST_DIR/CSharpCompiler*
+		chown -R root:root $RUST_DIR
 	fi
 fi
 
@@ -132,25 +122,13 @@ fi
 if [ ! -z ${RUST_RCON_PASSWORD+x} ]; then
 	RUST_STARTUP_COMMAND="$RUST_STARTUP_COMMAND +rcon.password $RUST_RCON_PASSWORD"
 fi
-
 if [ ! -z ${RUST_RCON_WEB+x} ]; then
 	RUST_STARTUP_COMMAND="$RUST_STARTUP_COMMAND +rcon.web $RUST_RCON_WEB"
-	if [ "$RUST_RCON_WEB" = "1" ]; then
-		# Fix the webrcon (customizes a few elements)
-		bash /tmp/fix_conn.sh
-
-		# Start nginx (in the background)
-		echo "Starting web server.."
-		nginx
-		NGINX=$!
-		sleep 5
-		#nginx -g "daemon off;" && sleep 5 ## Used for debugging nginx
-	fi
 fi
 
 # Check if a special seed override file exists
-if [ -f "/steamcmd/rust/seed_override" ]; then
-	RUST_SEED_OVERRIDE=`cat /steamcmd/rust/seed_override`
+if [ -f "$RUST_DIR/seed_override" ]; then
+	RUST_SEED_OVERRIDE=`cat $RUST_DIR/seed_override`
 	echo "Found seed override: $RUST_SEED_OVERRIDE"
 
 	# Modify the server identity to include the override seed
@@ -158,16 +136,16 @@ if [ -f "/steamcmd/rust/seed_override" ]; then
 	RUST_SERVER_SEED=$RUST_SEED_OVERRIDE
 
 	# Prepare the identity directory (if it doesn't exist)
-	if [ ! -d "/steamcmd/rust/server/$RUST_SEED_OVERRIDE" ]; then
+	if [ ! -d "$RUST_DIR/server/$RUST_SEED_OVERRIDE" ]; then
 		echo "Creating seed override identity directory.."
-		mkdir -p "/steamcmd/rust/server/$RUST_SEED_OVERRIDE"
-		if [ -f "/steamcmd/rust/UserPersistence.db.bak" ]; then
+		mkdir -p "$RUST_DIR/server/$RUST_SEED_OVERRIDE"
+		if [ -f "$RUST_DIR/UserPersistence.db.bak" ]; then
 			echo "Copying blueprint backup in place.."
-			cp -fr "/steamcmd/rust/UserPersistence.db.bak" "/steamcmd/rust/server/$RUST_SEED_OVERRIDE/UserPersistence.db"
+			cp -fr "$RUST_DIR/UserPersistence.db.bak" "$RUST_DIR/server/$RUST_SEED_OVERRIDE/UserPersistence.db"
 		fi
-		if [ -f "/steamcmd/rust/xp.db.bak" ]; then
+		if [ -f "$RUST_DIR/xp.db.bak" ]; then
 			echo "Copying blueprint backup in place.."
-			cp -fr "/steamcmd/rust/xp.db.bak" "/steamcmd/rust/server/$RUST_SEED_OVERRIDE/xp.db"
+			cp -fr "$RUST_DIR/xp.db.bak" "$RUST_DIR/server/$RUST_SEED_OVERRIDE/xp.db"
 		fi
 	fi
 fi
@@ -187,17 +165,17 @@ if [ "$LOGROTATE_ENABLED" = "1" ]; then
 	echo "Using startup arguments: $RUST_SERVER_STARTUP_ARGUMENTS"
 
 	# Create the logging directory structure
-	if [ ! -d "/steamcmd/rust/logs/archive" ]; then
-		mkdir -p /steamcmd/rust/logs/archive
+	if [ ! -d "$RUST_DIR/logs/archive" ]; then
+		mkdir -p $RUST_DIR/logs/archive
 	fi
 
 	# Set the logfile filename/path
 	DATE=`date '+%Y-%m-%d_%H-%M-%S'`
-	RUST_SERVER_LOG_FILE="/steamcmd/rust/logs/$RUST_SERVER_IDENTITY"_"$DATE.txt"
+	RUST_SERVER_LOG_FILE="$RUST_DIR/logs/$RUST_SERVER_IDENTITY"_"$DATE.txt"
 
 	# Archive old logs
 	echo "Cleaning up old logs.."
-	mv /steamcmd/rust/logs/*.txt /steamcmd/rust/logs/archive
+	mv $RUST_DIR/logs/*.txt $RUST_DIR/logs/archive
 else
 	echo "Log rotation disabled!"
 fi
@@ -207,20 +185,18 @@ echo "Starting scheduled task manager.."
 node /scheduler_app/app.js &
 
 # Set the working directory
-cd /steamcmd/rust
+cd $RUST_DIR
 
 # Run the server
 echo "Starting Rust.."
+RUST_FULL_CMD=$(echo -e '$RUST_DIR/RustDedicated $RUST_STARTUP_COMMAND +server.identity "$RUST_SERVER_IDENTITY" +server.seed "$RUST_SERVER_SEED"  +server.hostname "$RUST_SERVER_NAME" +server.url "$RUST_SERVER_URL" +server.headerimage "$RUST_SERVER_BANNER_URL" +server.description "$RUST_SERVER_DESCRIPTION" +server.worldsize "$RUST_SERVER_WORLDSIZE" +server.maxplayers "$RUST_SERVER_MAXPLAYERS" +server.saveinterval "$RUST_SERVER_SAVE_INTERVAL" 2>&1')
 if [ "$LOGROTATE_ENABLED" = "1" ]; then
-	unbuffer /steamcmd/rust/RustDedicated $RUST_STARTUP_COMMAND +server.identity "$RUST_SERVER_IDENTITY" +server.seed "$RUST_SERVER_SEED"  +server.hostname "$RUST_SERVER_NAME" +server.url "$RUST_SERVER_URL" +server.headerimage "$RUST_SERVER_BANNER_URL" +server.description "$RUST_SERVER_DESCRIPTION" +server.worldsize "$RUST_SERVER_WORLDSIZE" +server.maxplayers "$RUST_SERVER_MAXPLAYERS" +server.saveinterval "$RUST_SERVER_SAVE_INTERVAL" 2>&1 | grep --line-buffered -Ev '^\s*$|Filename' | tee $RUST_SERVER_LOG_FILE &
+	unbuffer $RUST_FULL_CMD | grep --line-buffered -Ev '^\s*$|Filename' | tee $RUST_SERVER_LOG_FILE &
 else
-	/steamcmd/rust/RustDedicated $RUST_STARTUP_COMMAND +server.identity "$RUST_SERVER_IDENTITY" +server.seed "$RUST_SERVER_SEED"  +server.hostname "$RUST_SERVER_NAME" +server.url "$RUST_SERVER_URL" +server.headerimage "$RUST_SERVER_BANNER_URL" +server.description "$RUST_SERVER_DESCRIPTION" +server.worldsize "$RUST_SERVER_WORLDSIZE" +server.maxplayers "$RUST_SERVER_MAXPLAYERS" +server.saveinterval "$RUST_SERVER_SAVE_INTERVAL"  2>&1 &
+	$RUST_FULL_CMD &
 fi
 
 child=$!
 wait "$child"
-
-pkill -f nginx
-
 echo "Exiting.."
 exit
