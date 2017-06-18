@@ -22,7 +22,7 @@ exit_handler() {
 			cp -fr "$RUST_DIR/server/$RUST_SERVER_IDENTITY/xp*.db" "$RUST_DIR/bak/"
 		fi
 	fi
-	
+
 	echo "Exiting.."
 	exit
 }
