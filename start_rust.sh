@@ -91,16 +91,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RUST_DIR/RustDedicated_Data/Plugins/x86
 # Check if Oxide is enabled
 if [ "$RUST_OXIDE_ENABLED" = "1" ]; then
 	# Next check if Oxide doesn't' exist, or if we want to always update it
-	INSTALL_OXIDE="0"
-	if [ ! -f "$RUST_DIR/CSharpCompiler" ]; then
-		INSTALL_OXIDE="1"
-	fi
-	if [ "$RUST_OXIDE_UPDATE_ON_BOOT" = "1" ]; then
-		INSTALL_OXIDE="1"
-	fi
-
-	# If necessary, download and install latest Oxide
-	if [ "$INSTALL_OXIDE" = "1" ]; then
+	if [ ! -f "$RUST_DIR/CSharpCompiler" ] || [ "$RUST_OXIDE_UPDATE_ON_BOOT" = "1" ]; then
 		echo "Downloading and installing latest Oxide.."
 		curl -sL https://dl.bintray.com/oxidemod/builds/Oxide-Rust.zip | bsdtar -xvf- -C $RUST_DIR/
 		chmod 755 $RUST_DIR/CSharpCompiler*
