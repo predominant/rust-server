@@ -1,0 +1,21 @@
+FROM didstopia/rust-server:latest
+LABEL maintainer "Didstopia <support@didstopia.com>"
+
+ENV WEBRCON_COMMIT "24b0898d86706723d52bb4db8559d90f7c9e069b"
+
+RUN apt-get install -y --no-install-recommends \
+    nginx
+
+RUN rm -fr /usr/share/nginx/html/* && \
+	rm -fr /etc/nginx/sites-available/* && \
+	rm -fr /etc/nginx/sites-enabled/*
+
+COPY nginx_rcon.conf /etc/nginx/nginx.conf
+RUN curl -sL https://github.com/Facepunch/webrcon/archive/$WEBRCON_COMMIT.zip | bsdtar -xvf- -C /tmp && \
+	mv /tmp/webrcon-$WEBRCON_COMMIT/* /usr/share/nginx/html/ && \
+	rm -fr /tmp/webrcon-$WEBRCON_COMMIT
+
+# Customize the webrcon package to fit our needs
+ADD fix_conn.sh /tmp/fix_conn.sh
+
+EXPOSE 80
