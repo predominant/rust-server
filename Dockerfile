@@ -34,8 +34,7 @@ ADD update_check.sh /update_check.sh
 WORKDIR /
 
 # Expose necessary ports
-EXPOSE 28015
-EXPOSE 28016
+EXPOSE 28015-28016
 
 # Setup default environment variables for the server
 ENV RUST_SERVER_STARTUP_ARGUMENTS "-batchmode -load +server.secure 1"
